@@ -1,0 +1,12 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.terminal.activateEnvironment": false,
+    "terminal.integrated.env.osx": {
+        "CONDA_AUTO_ACTIVATE_BASE": "false",
+        "CONDA_CHANGEPS1": "false"
+    },
+    "terminal.integrated.shellArgs.osx": [
+        "-c",
+        "export CONDA_AUTO_ACTIVATE_BASE=false; export CONDA_CHANGEPS1=false; for i in {1..10}; do conda deactivate 2>/dev/null; done; source ${workspaceFolder}/.venv/bin/activate; exec zsh"
+    ]
+}

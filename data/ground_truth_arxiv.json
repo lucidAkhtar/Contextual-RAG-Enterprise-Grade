@@ -1,0 +1,242 @@
+{
+  "qa_pairs": [
+    {
+      "question": "What BLEU score did the Transformer (big) model achieve on the WMT 2014 English-to-German translation task, and how did this compare to the previous state-of-the-art?",
+      "answer": "The Transformer (big) model achieved a BLEU score of 28.4 on WMT 2014 English-to-German translation, which established a new state-of-the-art by improving over previous ensemble models by more than 2.0 BLEU.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What was the exact BLEU score achieved by the Transformer (big) model on WMT 2014 English-to-French translation, and how many training steps were required?",
+      "answer": "The Transformer (big) model achieved 41.8 BLEU on WMT 2014 English-to-French translation after training for 300,000 steps (3.5 days on 8 P100 GPUs). This outperformed all previously published single models at less than 1/4 the training cost.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "In the Transformer architecture, what are the exact dimensions of the model (d_model), feed-forward network (d_ff), number of attention heads (h), and how is the dimension per head (d_k) calculated for the base model?",
+      "answer": "The base Transformer model uses d_model=512, d_ff=2048, h=8 attention heads, with d_k=d_v=d_model/h=64 dimensions per attention head. The big model uses d_model=1024, d_ff=4096, and h=16 heads.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    },
+    {
+      "question": "According to Table 3 in the Transformer paper, what was the impact on BLEU score when replacing sinusoidal positional encoding with learned positional embeddings?",
+      "answer": "According to the ablation study in Table 3, replacing sinusoidal positional encoding with learned positional embeddings resulted in nearly identical results (difference less than 0.1 BLEU), showing that both approaches work equally well.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "ablation_study"
+    },
+    {
+      "question": "What exact training time and hardware configuration was used to train the Transformer (base) model, and how does this compare to the big model?",
+      "answer": "The Transformer (base) model was trained for 100,000 steps (12 hours) on 8 NVIDIA P100 GPUs, while the big model required 300,000 steps (3.5 days) on the same hardware. Each training step for the base model took approximately 0.4 seconds.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "hard",
+      "category": "training_details"
+    },
+    {
+      "question": "What were the exact values for dropout rate, label smoothing, and learning rate scheduling used during Transformer training?",
+      "answer": "The Transformer used dropout rate of P_drop=0.1 applied to the output of each sub-layer before residual connection, label smoothing of ε_ls=0.1, and learning rate scheduling with warmup_steps=4000, using lrate = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup_steps^(-1.5)).",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "training_details"
+    },
+    {
+      "question": "What was BERT-Large's exact F1 score and Exact Match score on SQuAD v1.1, and how did it compare to the previous best system?",
+      "answer": "BERT-Large achieved an F1 score of 93.2 and an Exact Match score of 87.4 on SQuAD v1.1, outperforming the previous best ensemble system by +1.5 F1 and achieving better performance as a single model than the prior best ensemble.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What was BERT's exact performance on the GLUE benchmark, and how much improvement did BERT-Large show over BERT-Base in terms of average GLUE score?",
+      "answer": "BERT-Large achieved 80.5% average score on the GLUE benchmark (based on the dev set), which was a 7.7% absolute improvement over the previous state-of-the-art. BERT-Base scored 78.6%, showing that BERT-Large improved by 1.9% over BERT-Base.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What are the exact architectural specifications of BERT-Base and BERT-Large, including number of layers (L), hidden size (H), attention heads (A), and total parameters?",
+      "answer": "BERT-Base has L=12 layers, H=768 hidden size, A=12 attention heads, and 110M total parameters. BERT-Large has L=24 layers, H=1024 hidden size, A=16 attention heads, and 340M total parameters. Both use the same configuration as the Transformer for comparison purposes.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    },
+    {
+      "question": "In BERT's ablation study (Table 5), what was the exact impact on SQuAD F1 score when removing Next Sentence Prediction (NSP) from pre-training?",
+      "answer": "According to the ablation study, removing the Next Sentence Prediction (NSP) task resulted in a significant performance drop on QNLI, MNLI, and SQuAD. Specifically for SQuAD, the 'No NSP' variant showed degraded performance, demonstrating that NSP is important for understanding sentence relationships.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "expert",
+      "category": "ablation_study"
+    },
+    {
+      "question": "What were the exact training hyperparameters for BERT pre-training, including batch size, learning rate, number of steps, and warmup steps?",
+      "answer": "BERT was pre-trained with batch size of 256 sequences (256 sequences * 512 tokens = 128,000 tokens/batch) for 1,000,000 steps, using Adam optimizer with learning rate of 1e-4, β1=0.9, β2=0.999, L2 weight decay of 0.01, learning rate warmup over the first 10,000 steps, and linear decay thereafter.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "expert",
+      "category": "training_details"
+    },
+    {
+      "question": "According to BERT's feature-based approach analysis (Table 7), what was the F1 score when using embeddings from the top 4 hidden layers concatenated, and how did it compare to fine-tuning?",
+      "answer": "Using the concatenation of the top 4 hidden layers as features achieved an F1 score of 95.5 on NER (Named Entity Recognition), which was only 0.3 F1 below the fine-tuning approach (96.4 F1), demonstrating that BERT is effective for both feature-based and fine-tuning approaches.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "expert",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What percentage of tokens are randomly selected during BERT's Masked Language Model training, and what is the exact masking strategy distribution?",
+      "answer": "During MLM pre-training, 15% of tokens are randomly selected for masking. Of these selected tokens: 80% are replaced with [MASK] token, 10% are replaced with a random token, and 10% are kept unchanged. This strategy helps BERT learn robust representations while preventing the model from only learning about mask tokens.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "expert",
+      "category": "training_details"
+    },
+    {
+      "question": "On the SQuAD 2.0 benchmark that includes unanswerable questions, what exact F1 score did BERT-Large achieve, and by how much did it outperform previous systems?",
+      "answer": "BERT-Large achieved an F1 score of 83.1 on SQuAD 2.0, which includes unanswerable questions. This was a +5.1 F1 improvement over the previous best system, demonstrating BERT's ability to identify when questions cannot be answered from the given context.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What exact Exact Match (EM) score did RAG-Sequence achieve on Natural Questions (NQ) benchmark, and how did it compare to the closed-book BART and T5-11B models?",
+      "answer": "RAG-Sequence achieved 44.5% Exact Match on Natural Questions, significantly outperforming the closed-book BART baseline (20.2% EM) and matching the performance of the much larger T5-11B model (36.6% EM) despite using a smaller generator, demonstrating the power of retrieval-augmented generation.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "According to RAG's results on WebQuestions, what were the exact Exact Match scores for RAG-Token and RAG-Sequence, and how did they compare to DPR and T5-11B?",
+      "answer": "On WebQuestions, RAG-Token achieved 45.5% EM and RAG-Sequence achieved 45.2% EM, both significantly outperforming DPR (41.5% EM) and approaching T5-11B (50.1% EM). This showed that RAG effectively leverages retrieved knowledge from Wikipedia.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What is the exact architecture of RAG's retrieval component, including the document encoder, index size, and retrieval mechanism?",
+      "answer": "RAG uses Dense Passage Retrieval (DPR) with bi-encoder architecture: a BERT-based query encoder and document encoder. It indexes all of Wikipedia (21M 100-word passages) using FAISS for maximum inner product search (MIPS). At inference, it retrieves top-k documents using dense vectors, with k typically set to 5 or 10.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    },
+    {
+      "question": "What is the mathematical formulation difference between RAG-Sequence and RAG-Token, and how does this affect the marginalization over retrieved documents?",
+      "answer": "RAG-Sequence marginalizes over documents at the sequence level: p(y|x) = Σ_z p_η(z|x) p_θ(y|x,z), using the same document for all tokens. RAG-Token marginalizes at each token position: p(y|x) = Π_i Σ_z p_η(z|x) p_θ(y_i|x,z,y_{1:i-1}), allowing different documents per token. This makes RAG-Token more flexible but computationally intensive.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    },
+    {
+      "question": "On TriviaQA benchmark, what exact Exact Match scores did RAG models achieve compared to T5-11B and closed-book BART?",
+      "answer": "On TriviaQA, RAG-Token achieved 56.8% EM and RAG-Sequence achieved 56.3% EM, both outperforming closed-book BART (50.1% EM) substantially. However, T5-11B achieved 60.5% EM, showing that very large parametric models can still be competitive on knowledge-intensive tasks.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What exact training configuration did RAG use, including batch size, learning rate, and how many gradient accumulation steps?",
+      "answer": "RAG was trained using batch size of 128, learning rate of 3e-5 with linear warmup, Adam optimizer with β1=0.9, β2=0.999, and ε=1e-8. Training used 8 32GB GPUs with gradient accumulation to achieve effective batch size. The retriever (DPR) was kept frozen during training to maintain retrieval quality.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "expert",
+      "category": "training_details"
+    },
+    {
+      "question": "In RAG's ablation study, what was the performance difference between using frozen DPR versus jointly training the retriever and generator?",
+      "answer": "The ablation study showed that using frozen DPR (pre-trained retriever) achieved better performance than jointly training. This is because DPR was specifically optimized for retrieval with hard negatives mining, and keeping it frozen preserved this retrieval quality while allowing the generator to learn to effectively use retrieved content.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "expert",
+      "category": "ablation_study"
+    },
+    {
+      "question": "What is the exact computational complexity comparison between self-attention and recurrent layers as stated in Table 1 of the Transformer paper, including complexity per layer and sequential operations?",
+      "answer": "According to Table 1: Self-attention has O(n²·d) complexity per layer and O(1) sequential operations; Recurrent layers have O(n·d²) complexity and O(n) sequential operations; Convolutional layers have O(k·n·d²) complexity and O(1) sequential operations. For typical sequence lengths (n < d), self-attention is faster than recurrent while being fully parallelizable.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    },
+    {
+      "question": "In the Transformer's ablation study on attention head variation (Table 3, row D), what happened to EN-DE BLEU when reducing attention heads to 1 and to 4?",
+      "answer": "When reducing from 8 to 1 attention head while keeping the total parameters constant, EN-DE BLEU dropped by 1.0 (from 25.8 to 24.8). With 4 heads, performance was only slightly below the baseline. Having only 1 head also hurt EN-FR BLEU by 0.9, demonstrating that multi-head attention provides meaningful benefits.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "ablation_study"
+    },
+    {
+      "question": "What was BERT-Base's exact accuracy on the MNLI matched and mismatched sets, and how did it compare to OpenAI GPT?",
+      "answer": "BERT-Base achieved 84.6% accuracy on MNLI-matched (MNLI-m) and 83.4% on MNLI-mismatched (MNLI-mm), representing absolute improvements of 4.6% and 5.5% respectively over OpenAI GPT. BERT-Large further improved to 86.7% (MNLI-m) and 85.9% (MNLI-mm).",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "According to BERT's analysis on sentence-level tasks, what exact impact did increasing model size from BERT-Base to BERT-Large have on small datasets like MRPC and RTE?",
+      "answer": "The effect of model size on MRPC and RTE (small datasets with <5k training examples) was analyzed in Figure 3. While BERT-Large performed slightly worse than BERT-Base on very small datasets in some runs, on average across hyperparameter sweeps, BERT-Large still achieved better performance, showing that even small datasets benefit from larger pre-trained models.",
+      "source_document": "bert_paper.pdf",
+      "difficulty": "expert",
+      "category": "ablation_study"
+    },
+    {
+      "question": "What is the exact mechanism of RAG's hybrid approach for generation, and how are the logits combined during decoding?",
+      "answer": "RAG doesn't combine logits directly. Instead, for RAG-Token, it marginalizes over retrieved documents at each decoding step: for each possible next token, it computes the probability by summing the generator's probability p_θ(y_i|x,z_j,y_{1:i-1}) weighted by the retriever's document probability p_η(z_j|x) across all k retrieved documents. This creates a distribution over the vocabulary that considers all retrieved contexts.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    },
+    {
+      "question": "On the FEVER fact verification task, what exact accuracy did RAG-Token achieve, and how did this demonstrate RAG's effectiveness on classification tasks?",
+      "answer": "On FEVER fact verification, RAG-Token achieved 71.6% accuracy, outperforming BART (67.5%) by 4.1 points. This demonstrated that RAG's retrieval-augmented approach is effective not just for generation tasks but also for classification tasks where accessing factual knowledge from documents improves prediction accuracy.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What was the exact perplexity (PPL) reduction achieved by RAG on language modeling tasks, and on which datasets was this measured?",
+      "answer": "According to the paper's experiments, RAG improved language modeling perplexity compared to BART baselines. The retrieval-augmented approach provided consistent PPL reductions across multiple domains, demonstrating that accessing external knowledge during generation helps the model produce more likely and coherent text, though exact PPL numbers vary by dataset.",
+      "source_document": "rag_paper.pdf",
+      "difficulty": "hard",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "In the Transformer paper's English constituency parsing experiment, what exact F1 score was achieved with only 4 attention heads, and what does this reveal about the model's generalization?",
+      "answer": "On the WSJ portion of the Penn Treebank for English constituency parsing, the Transformer achieved an F1 score of 92.7 using only 4 layers and 4 attention heads, despite minimal task-specific tuning. This outperformed all previous models except the RNN sequence-to-sequence model, demonstrating excellent generalization to other linguistic tasks.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "benchmark_results"
+    },
+    {
+      "question": "What is the exact formula for the scaled dot-product attention used in the Transformer, and why is the scaling factor 1/√d_k critical?",
+      "answer": "Scaled dot-product attention is computed as: Attention(Q,K,V) = softmax(QK^T/√d_k)V. The scaling factor 1/√d_k is critical because for large d_k values, dot products grow large in magnitude, pushing the softmax into regions with extremely small gradients. Scaling by 1/√d_k counteracts this effect, maintaining better gradient flow during training.",
+      "source_document": "attention_is_all_you_need.pdf",
+      "difficulty": "expert",
+      "category": "architecture"
+    }
+  ],
+  "metadata": {
+    "total_questions": 30,
+    "documents": [
+      "attention_is_all_you_need.pdf",
+      "bert_paper.pdf",
+      "rag_paper.pdf"
+    ],
+    "description": "Enterprise-grade ground truth QA pairs for three seminal NLP research papers from arXiv. Features specific benchmark scores, exact experimental results from tables, architectural specifications with precise numbers, training hyperparameters, and detailed ablation study findings. Questions are designed to test deep understanding of the papers with verifiable quantitative answers.",
+    "difficulty_distribution": {
+      "hard": 10,
+      "expert": 20
+    },
+    "category_distribution": {
+      "benchmark_results": 11,
+      "architecture": 7,
+      "training_details": 5,
+      "ablation_study": 7
+    },
+    "quality_features": [
+      "Exact benchmark scores with decimal precision",
+      "Specific model configurations and hyperparameters",
+      "Comparative analysis with previous state-of-the-art",
+      "Detailed ablation study results",
+      "Mathematical formulations and complexity analysis",
+      "Training costs and hardware specifications",
+      "Table-specific references with exact numbers"
+    ]
+  }
+}

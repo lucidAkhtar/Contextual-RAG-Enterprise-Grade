@@ -1,0 +1,87 @@
+[project]
+name = "contextual-rag"
+version = "1.0.0"
+description = "Enterprise-grade RAG system with Anthropic's contextual retrieval"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb==0.4.22",
+    "diagrams>=0.25.1",
+    "fastapi==0.109.0",
+    "llama-index==0.10.17",
+    "llama-index-core==0.10.17",
+    "llama-index-embeddings-huggingface==0.1.4",
+    "llama-index-llms-ollama==0.1.5",
+    "llama-index-vector-stores-chroma>=0.1.10",
+    "numpy==1.26.3",
+    "pandas==2.2.0",
+    "plotly==5.18.0",
+    "prometheus-client==0.19.0",
+    "pydantic==2.5.3",
+    "pydantic-settings==2.1.0",
+    "pymupdf==1.23.21",
+    "python-dotenv==1.0.0",
+    "rank-bm25==0.2.2",
+    "reportlab==4.0.9",
+    "requests==2.31.0",
+    "scikit-learn==1.4.0",
+    "sentence-transformers==2.3.1",
+    "streamlit==1.31.0",
+    "tinydb==4.8.0",
+    "uvicorn[standard]==0.27.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests"
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "black==24.1.1",
+    "flake8==7.0.0",
+    "mypy==1.8.0",
+    "pytest==7.4.4",
+    "pytest-asyncio==0.23.3",
+]
