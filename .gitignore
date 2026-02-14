@@ -30,6 +30,7 @@ wheels/
 .envrc
 
 # IDE
+.vscode
 .vscode/*
 !.vscode/settings.json
 .idea/
@@ -38,7 +39,7 @@ wheels/
 *~
 
 # Data
-*.pdf
+
 data/chunks/
 data/embeddings/
 data/indices/
@@ -64,5 +65,4 @@ htmlcov/
 # Temporary
 tmp/
 temp/
-AI_machine_coding_Assignment.md
 
