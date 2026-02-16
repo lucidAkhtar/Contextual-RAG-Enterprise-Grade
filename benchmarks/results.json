@@ -1,0 +1,42 @@
+{
+  "contextual": {
+    "method": "contextual",
+    "avg_latency_ms": 13780.449116817908,
+    "p95_latency_ms": 31425.625552059486,
+    "avg_semantic_similarity": 0.06276367892839987,
+    "recall_at_1": 0.0,
+    "recall_at_3": 0.0,
+    "recall_at_5": 0.0,
+    "total_queries": 10
+  },
+  "bm25": {
+    "method": "bm25",
+    "avg_latency_ms": 62391.82981240447,
+    "p95_latency_ms": 72891.32445784633,
+    "avg_semantic_similarity": 0.12813796514288794,
+    "recall_at_1": 0.1,
+    "recall_at_3": 0.4,
+    "recall_at_5": 0.4,
+    "total_queries": 10
+  },
+  "tfidf": {
+    "method": "tfidf",
+    "avg_latency_ms": 61284.76740001934,
+    "p95_latency_ms": 73918.56628957028,
+    "avg_semantic_similarity": 0.19185145994866154,
+    "recall_at_1": 0.2,
+    "recall_at_3": 0.4,
+    "recall_at_5": 0.5,
+    "total_queries": 10
+  },
+  "hybrid": {
+    "method": "hybrid",
+    "avg_latency_ms": 51283.12961678021,
+    "p95_latency_ms": 67697.8601544688,
+    "avg_semantic_similarity": 0.3889994603240415,
+    "recall_at_1": 0.0,
+    "recall_at_3": 0.2,
+    "recall_at_5": 0.3,
+    "total_queries": 10
+  }
+}

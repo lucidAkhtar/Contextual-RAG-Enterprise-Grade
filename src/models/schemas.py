@@ -108,3 +108,40 @@ class AuditLog(BaseModel):
     success: bool = Field(default=True, description="Whether query succeeded")
     error_message: Optional[str] = Field(None, description="Error message if failed")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+
+class ComparisonRequest(BaseModel):
+    """Request schema for retrieval method comparison endpoint."""
+    
+    q: str = Field(..., description="Query string", min_length=1)
+    k: int = Field(default=5, description="Number of chunks to retrieve per method", ge=1, le=20)
+    methods: Optional[List[Literal["contextual", "bm25", "tfidf"]]] = Field(
+        default=["contextual", "bm25", "tfidf"],
+        description="List of retrieval methods to compare"
+    )
+
+
+class MethodResult(BaseModel):
+    """Results from a single retrieval method for comparison."""
+    
+    method: str = Field(..., description="Retrieval method name")
+    answer: str = Field(..., description="Generated answer using this method")
+    confidence_score: float = Field(..., description="Confidence score (0-1)", ge=0.0, le=1.0)
+    confidence_level: Literal["high", "medium", "low"] = Field(..., description="Confidence level")
+    sources: List[RetrievalSource] = Field(..., description="Retrieved chunks")
+    top_source_scores: List[float] = Field(..., description="Top 3 retrieval scores for quick comparison")
+    latency_ms: float = Field(..., description="Query latency in milliseconds")
+    num_sources: int = Field(..., description="Number of sources retrieved")
+
+
+class ComparisonResponse(BaseModel):
+    """Response schema for retrieval method comparison endpoint."""
+    
+    query: str = Field(..., description="Original query")
+    results: List[MethodResult] = Field(..., description="Results from each retrieval method")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Comparison timestamp")
+    total_latency_ms: float = Field(..., description="Total time for all comparisons")
+    summary: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Summary statistics and recommendations"
+    )

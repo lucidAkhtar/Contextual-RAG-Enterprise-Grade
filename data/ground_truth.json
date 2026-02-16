@@ -1,0 +1,167 @@
+{
+  "metadata": {
+    "total_qa_pairs": 19,
+    "documents": [
+      "rag_paper.pdf",
+      "attention_is_all_you_need.pdf",
+      "bert_paper.pdf"
+    ],
+    "format": "Assignment compliant: {question, answer, page, span_start, span_end}",
+    "note": "span_start and span_end are character positions in the PDF text. -1 indicates span not found."
+  },
+  "qa_pairs": [
+    {
+      "question": "What is the main advantage of the Transformer architecture over recurrent models?",
+      "answer": "The Transformer architecture can parallelize computation by relying entirely on attention mechanisms instead of recurrence, which allows it to achieve significantly better translation quality while being more parallelizable and requiring less time to train.",
+      "page": 8,
+      "span_start": 24093,
+      "span_end": 24349,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "How does multi-head attention work in the Transformer?",
+      "answer": "Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. Instead of performing a single attention function, it projects queries, keys and values h times with different learned linear projections, performs attention in parallel, and concatenates the results.",
+      "page": 4,
+      "span_start": 11342,
+      "span_end": 11642,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "What are the three different ways attention mechanisms are used in the Transformer?",
+      "answer": "The Transformer uses attention in three ways: encoder-decoder attention where queries come from the decoder and keys and values from the encoder, self-attention in the encoder where all keys, values and queries come from the encoder output, and self-attention in the decoder with masking to prevent positions from attending to subsequent positions.",
+      "page": 5,
+      "span_start": 12079,
+      "span_end": 12379,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "What BLEU score did the Transformer (big) model achieve on WMT 2014 English-to-German translation?",
+      "answer": "28.4 BLEU",
+      "page": 1,
+      "span_start": 1163,
+      "span_end": 1172,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "Why do the authors use positional encodings in the Transformer?",
+      "answer": "Since the model contains no recurrence and no convolution, positional encodings are added to give the model information about the relative or absolute position of tokens in the sequence. Without positional information, the model would be permutation invariant.",
+      "page": 6,
+      "span_start": 14842,
+      "span_end": 15100,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "What are the key hyperparameters of the Transformer base model?",
+      "answer": "The base model uses 6 layers (N=6), model dimension d_model=512, 8 attention heads (h=8), feed-forward dimension d_ff=2048, dropout rate of 0.1, and attention dimensions d_k=d_v=64.",
+      "page": 3,
+      "span_start": 7166,
+      "span_end": 7338,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "How much faster was the Transformer compared to previous models in terms of training time?",
+      "answer": "The Transformer base model trained in just 12 hours on 8 P100 GPUs for 100,000 steps, while the big model took 3.5 days for 300,000 steps, which is significantly faster than previous state-of-the-art models while achieving better quality.",
+      "page": 1,
+      "span_start": 1879,
+      "span_end": 2113,
+      "source_document": "attention_is_all_you_need.pdf"
+    },
+    {
+      "question": "What are the two novel unsupervised tasks used in BERT pre-training?",
+      "answer": "BERT uses two novel unsupervised prediction tasks: Masked Language Model (MLM) where 15% of tokens are randomly masked and the model predicts them, and Next Sentence Prediction (NSP) where the model learns to predict whether two sentences follow each other in the original text.",
+      "page": 1,
+      "span_start": 3651,
+      "span_end": 3923,
+      "source_document": "bert_paper.pdf"
+    },
+    {
+      "question": "How does BERT differ from traditional left-to-right language models like GPT?",
+      "answer": "Unlike GPT which uses unidirectional left-to-right architecture, BERT is designed to pre-train deep bidirectional representations by jointly conditioning on both left and right context in all layers using the masked language model objective, allowing it to capture richer contextual information.",
+      "page": 1,
+      "span_start": -1,
+      "span_end": -1,
+      "source_document": "bert_paper.pdf",
+      "note": "Span not found - answer may be paraphrased or across multiple pages"
+    },
+    {
+      "question": "What is the architecture difference between BERT-Base and BERT-Large?",
+      "answer": "BERT-Base has 12 transformer layers (L=12), hidden size of 768 (H=768), and 12 attention heads (A=12) totaling 110M parameters, while BERT-Large has 24 layers (L=24), hidden size of 1024 (H=1024), and 16 attention heads (A=16) totaling 340M parameters.",
+      "page": 8,
+      "span_start": 31180,
+      "span_end": 31415,
+      "source_document": "bert_paper.pdf"
+    },
+    {
+      "question": "What F1 score did BERT-Large achieve on SQuAD v1.1 and how does it compare to previous best?",
+      "answer": "BERT-Large achieved 93.2 F1 and 87.4 Exact Match on SQuAD v1.1, surpassing the previous best ensemble system and establishing a new state-of-the-art with a single model.",
+      "page": 1,
+      "span_start": 1025,
+      "span_end": 1193,
+      "source_document": "bert_paper.pdf"
+    },
+    {
+      "question": "What training procedure and learning rate does BERT use for fine-tuning?",
+      "answer": "BERT fine-tuning uses Adam optimizer with learning rate of 5e-5, 3e-5, or 2e-5 depending on the task, trains for 2-4 epochs, uses batch size of 16 or 32, and typically converges quickly. The same pre-trained model parameters are used across all tasks with just one additional output layer.",
+      "page": 1,
+      "span_start": 894,
+      "span_end": 1178,
+      "source_document": "bert_paper.pdf"
+    },
+    {
+      "question": "Why is the masked language model approach better than traditional language modeling for pre-training?",
+      "answer": "The masked language model allows BERT to fuse left and right context to pre-train a deep bidirectional Transformer. Standard left-to-right language models would allow each word to indirectly see itself in a bidirectional model, making pre-training trivial, so masking random tokens solves this issue.",
+      "page": 1,
+      "span_start": 3681,
+      "span_end": 3979,
+      "source_document": "bert_paper.pdf"
+    },
+    {
+      "question": "What is the key difference between RAG-Sequence and RAG-Token models?",
+      "answer": "RAG-Sequence uses the same retrieved document to generate the complete sequence, treating the retrieved documents as a latent variable marginalized to get the sequence likelihood. RAG-Token can use different documents for each token, marginalizing per token and allowing the model to mix content from multiple documents.",
+      "page": 2,
+      "span_start": 7381,
+      "span_end": 7681,
+      "source_document": "rag_paper.pdf"
+    },
+    {
+      "question": "How does RAG combine parametric and non-parametric memory?",
+      "answer": "RAG combines parametric memory from a pre-trained seq2seq transformer with non-parametric memory from a dense vector index of Wikipedia. The parametric model generates answers conditioned on retrieved documents from the non-parametric memory, allowing it to access and leverage knowledge beyond what's stored in its parameters.",
+      "page": 1,
+      "span_start": 852,
+      "span_end": 1152,
+      "source_document": "rag_paper.pdf"
+    },
+    {
+      "question": "What retrieval system does RAG use and how large is the document index?",
+      "answer": "RAG uses Dense Passage Retrieval (DPR) with a bi-encoder architecture to retrieve documents from a dense vector index containing 21 million 100-word Wikipedia passages. The retriever is initialized from DPR and can be fine-tuned end-to-end with the generator.",
+      "page": 12,
+      "span_start": 42406,
+      "span_end": 42663,
+      "source_document": "rag_paper.pdf"
+    },
+    {
+      "question": "What are the main advantages of RAG over purely parametric models?",
+      "answer": "RAG provides several advantages: it can access up-to-date knowledge by updating the document index without retraining, it's more interpretable by showing which documents were used, it can handle knowledge-intensive tasks better, and it combines the benefits of retrieval-based and generation-based approaches.",
+      "page": 5,
+      "span_start": 17463,
+      "span_end": 17763,
+      "source_document": "rag_paper.pdf"
+    },
+    {
+      "question": "What performance did RAG-Sequence achieve on Natural Questions compared to baseline models?",
+      "answer": "RAG-Sequence achieved 44.5% Exact Match on Natural Questions, outperforming the BART baseline and achieving competitive results with extraction-based models while generating free-form text rather than extracting spans.",
+      "page": 4,
+      "span_start": 12694,
+      "span_end": 12911,
+      "source_document": "rag_paper.pdf"
+    },
+    {
+      "question": "How does RAG handle the training of both retriever and generator components?",
+      "answer": "RAG can be trained end-to-end by backpropagating through the retrieval step using the gradient signal from the generator. The retriever and generator are jointly fine-tuned, though the document index embeddings are typically kept frozen after initial retriever training to maintain efficiency.",
+      "page": 2,
+      "span_start": 4380,
+      "span_end": 4672,
+      "source_document": "rag_paper.pdf"
+    }
+  ]
+}

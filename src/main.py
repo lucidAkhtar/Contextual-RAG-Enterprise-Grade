@@ -1,5 +1,5 @@
 """
-FastAPI application entry point.
+FastAPI application entry point with dependency injection.
 Implements enterprise-grade REST API with OpenAPI specification.
 """
 
@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
 
 from config.settings import get_settings
-from src.api.routes import router, set_query_engine, set_cache_store
+from src.api.routes import router
 from src.core.query_engine import QueryEngine
 from src.core.cache_store import CacheStore
 from src.utils.logger import setup_logger
@@ -26,15 +26,15 @@ logger = setup_logger(__name__)
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup and shutdown events.
+    Implements dependency injection by storing instances in app.state.
     
     Args:
-        app: FastAPI application instance
+        app: FastAPI application instance with state for DI
     """
     # Startup
     logger.info("Starting Contextual RAG API...")
-    
     cache_store_instance = None
-    
+
     try:
         settings = get_settings()
         
@@ -42,9 +42,10 @@ async def lifespan(app: FastAPI):
         if settings.enable_cache:
             logger.info("Initializing cache store...")
             cache_store_instance = CacheStore()
-            set_cache_store(cache_store_instance)
+            app.state.cache_store = cache_store_instance  # DI: Store in app.state
             logger.info("Cache store initialized successfully")
         else:
+            app.state.cache_store = None
             logger.info("Cache disabled in settings")
         
         # Initialize query engine
@@ -56,23 +57,23 @@ async def lifespan(app: FastAPI):
         if missing_pdfs:
             logger.error(f"PDF file(s) not found: {', '.join(missing_pdfs)}")
             logger.warning("Query engine will not be initialized")
-            engine = None
+            app.state.query_engine = None
         else:
-            engine = QueryEngine(
+            engine = QueryEngine.create(
                 pdf_paths=pdf_paths,
                 chunking_strategy="fixed_size",
                 enable_contextual_retrieval=True
             )
+            app.state.query_engine = engine  # DI: Store in app.state
             logger.info("Query engine initialized successfully")
-        
-        # Set global query engine
-        set_query_engine(engine)
         
         logger.info("API startup complete")
         
     except Exception as e:
         logger.error(f"Error during startup: {e}", exc_info=True)
         logger.warning("API will start but queries will fail")
+        app.state.query_engine = None
+        app.state.cache_store = None
     
     yield
     

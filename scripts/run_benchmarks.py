@@ -2,7 +2,7 @@
 Benchmarking and evaluation script.
 Measures latency, semantic similarity, and recall metrics.
 """
-
+import gc
 import json
 import time
 import numpy as np
@@ -44,12 +44,26 @@ class BenchmarkRunner:
         logger.info(f"Initialized BenchmarkRunner with {len(self.ground_truth)} QA pairs")
     
     def _load_ground_truth(self, path: str) -> List[GroundTruthQA]:
-        """Load ground truth QA pairs from JSON."""
+        """Load ground truth QA pairs from JSON.
+        Limits to first 10 QA pairs as per assignment requirement.
+        """
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            qa_pairs = [GroundTruthQA(**item) for item in data]
+            # Handle both old format (flat array) and new format (nested in qa_pairs)
+            if isinstance(data, dict) and 'qa_pairs' in data:
+                qa_data = data['qa_pairs']
+            else:
+                qa_data = data
+            
+            qa_pairs = [GroundTruthQA(**item) for item in qa_data]
+            
+            # Limit to 10 QA pairs as per assignment requirement
+            if len(qa_pairs) > 10:
+                logger.info(f"Limiting to first 10 QA pairs (assignment requirement) from {len(qa_pairs)} available")
+                qa_pairs = qa_pairs[:10]
+            
             logger.info(f"Loaded {len(qa_pairs)} ground truth QA pairs")
             return qa_pairs
             
@@ -91,13 +105,18 @@ class BenchmarkRunner:
         method: str,
         top_k_values: List[int]
     ) -> BenchmarkResult:
-        """Benchmark a single retrieval method."""
+        """Benchmark a single retrieval method with sequential execution."""
         latencies = []
         similarities = []
         recalls = {k: [] for k in top_k_values}
         
-        for qa in self.ground_truth:
+        total_questions = len(self.ground_truth)
+        logger.info(f"Processing {total_questions} questions sequentially for {method}...")
+        
+        for idx, qa in enumerate(self.ground_truth, 1):
             try:
+                logger.info(f"  [{idx}/{total_questions}] Processing: {qa.question[:60]}...")
+                
                 # Measure latency
                 start_time = time.perf_counter()
                 answer, sources, stats = self.query_engine.query(
@@ -107,6 +126,12 @@ class BenchmarkRunner:
                 )
                 latency = (time.perf_counter() - start_time) * 1000
                 latencies.append(latency)
+                
+                logger.info(f"      Completed in {latency:.2f}ms")
+                
+                # Sequential execution: Clean up GPU memory between queries
+                gc.collect()
+                time.sleep(0.5)  # Give GPU time to release memory
                 
                 # Calculate semantic similarity
                 generated_embedding = self.embed_model.get_text_embedding(answer)
@@ -129,11 +154,7 @@ class BenchmarkRunner:
                     )
                     recalls[k].append(recall)
                 
-                logger.debug(
-                    f"  Q: {qa.question[:50]}... | "
-                    f"Latency: {latency:.2f}ms | "
-                    f"Similarity: {similarity:.3f}"
-                )
+                logger.info(f"      Similarity: {similarity:.3f}, Recall@5: {recalls.get(5, [0])[-1]:.2f}")
                 
             except Exception as e:
                 logger.error(f"Error benchmarking query '{qa.question}': {e}")
@@ -178,8 +199,7 @@ class BenchmarkRunner:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         report = f"""# Contextual RAG Benchmark Report
-
-**Generated:** {timestamp}  
+ 
 **Ground Truth Queries:** {len(self.ground_truth)}  
 **LLM Model:** {settings.llm_model}  
 **Embedding Model:** {settings.embedding_model}  
@@ -203,6 +223,11 @@ similarity to ground truth answers, and retrieval recall.
         )
         
         for method, result in sorted_methods:
+            # Format recall values properly
+            recall_1 = f"{result.recall_at_1:.4f}" if result.recall_at_1 is not None else 'N/A'
+            recall_3 = f"{result.recall_at_3:.4f}" if result.recall_at_3 is not None else 'N/A'
+            recall_5 = f"{result.recall_at_5:.4f}" if result.recall_at_5 is not None else 'N/A'
+            
             report += f"""### {method.upper()}
 
 | Metric | Value |
@@ -210,9 +235,9 @@ similarity to ground truth answers, and retrieval recall.
 | **Average Latency** | {result.avg_latency_ms:.2f} ms |
 | **P95 Latency** | {result.p95_latency_ms:.2f} ms |
 | **Avg Semantic Similarity** | {result.avg_semantic_similarity:.4f} |
-| **Recall@1** | {result.recall_at_1:.4f if result.recall_at_1 else 'N/A'} |
-| **Recall@3** | {result.recall_at_3:.4f if result.recall_at_3 else 'N/A'} |
-| **Recall@5** | {result.recall_at_5:.4f if result.recall_at_5 else 'N/A'} |
+| **Recall@1** | {recall_1} |
+| **Recall@3** | {recall_3} |
+| **Recall@5** | {recall_5} |
 | **Total Queries** | {result.total_queries} |
 
 """
@@ -225,7 +250,8 @@ similarity to ground truth answers, and retrieval recall.
 """
         
         for method, result in sorted_methods:
-            report += f"| {method} | {result.avg_latency_ms:.2f} | {result.avg_semantic_similarity:.4f} | {result.recall_at_5:.4f if result.recall_at_5 else 'N/A'} |\n"
+            recall_5 = f"{result.recall_at_5:.4f}" if result.recall_at_5 is not None else 'N/A'
+            report += f"| {method} | {result.avg_latency_ms:.2f} | {result.avg_semantic_similarity:.4f} | {recall_5} |\n"
         
         report += """
 ## Analysis
@@ -309,21 +335,62 @@ def main():
     # Check if ground truth exists
     if not Path(settings.ground_truth_path).exists():
         logger.error(f"Ground truth file not found: {settings.ground_truth_path}")
-        logger.error("Please run generate_ground_truth.py first")
+        logger.error("Please run generate_ground_truth_with_spans.py first")
         return
     
-    # Check if PDF exists
-    if not Path(settings.pdf_path).exists():
-        logger.error(f"PDF file not found: {settings.pdf_path}")
+    # Get PDF paths
+    pdf_paths = settings.get_pdf_paths_list()
+    if not pdf_paths:
+        logger.error("No PDF files configured")
+        return
+    
+    # Check if PDFs exist
+    missing_pdfs = [p for p in pdf_paths if not Path(p).exists()]
+    if missing_pdfs:
+        logger.error(f"PDF file(s) not found: {', '.join(missing_pdfs)}")
         return
     
     # Initialize query engine
-    logger.info("Initializing query engine...")
-    query_engine = QueryEngine(
-        pdf_path=settings.pdf_path,
+    logger.info(f"Initializing query engine with {len(pdf_paths)} PDF(s)...")
+    
+    # Note: If you get GPU memory errors during benchmarks, set enable_contextual_retrieval=False
+    # This disables the 132 LLM calls and reduces GPU memory usage significantly
+    # Trade-off: Slightly lower accuracy but much lower memory requirements
+    query_engine = QueryEngine.create(
+        pdf_paths=pdf_paths,
         chunking_strategy="fixed_size",
-        enable_contextual_retrieval=True
+        enable_contextual_retrieval=True  # Set to False if GPU memory errors occur
     )
+    
+    # Wait for all initialization to complete and clean up memory
+    logger.info("=" * 80)
+    logger.info("Initialization complete. Preparing for benchmarks...")
+    logger.info("Cleaning up GPU memory before starting benchmarks...")
+    logger.info("=" * 80)
+    
+    # Aggressive garbage collection
+    gc.collect()
+    gc.collect()
+    
+    # Clear PyTorch GPU cache if available
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            logger.info(" Cleared CUDA cache")
+        elif torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+            logger.info(" Cleared MPS (Apple Silicon) cache")
+    except ImportError:
+        pass
+    
+    # Wait for GPU to stabilize
+    logger.info("Waiting 10 seconds for GPU memory to stabilize...")
+    time.sleep(10)
+    
+    logger.info(" Memory cleanup complete")
+    logger.info(" Ready to start benchmarks")
+    logger.info("")
     
     # Initialize benchmark runner
     runner = BenchmarkRunner(
@@ -331,16 +398,26 @@ def main():
         ground_truth_path=settings.ground_truth_path
     )
     
-    # Run benchmarks
+    # Run benchmarks (10 QA pairs × 4 methods = 40 queries)
+    logger.info("=" * 80)
+    logger.info("STARTING BENCHMARK EXECUTION")
+    logger.info(f"Questions: {len(runner.ground_truth)} (first 10 per assignment)")
+    logger.info(f"Methods: 4 (contextual, bm25, tfidf, hybrid)")
+    logger.info(f"Total queries: {len(runner.ground_truth) * 4}")
+    logger.info("Execution: Sequential (one query at a time to avoid GPU memory errors)")
+    logger.info("=" * 80)
+    logger.info("")
+    
     results = runner.run_benchmark(
         methods=["contextual", "bm25", "tfidf", "hybrid"],
         top_k_values=[1, 3, 5]
     )
     
     # Generate report
+    output_path = "benchmarks/results.md"
     report = runner.generate_report(
         results=results,
-        output_path=settings.benchmark_results_path.replace('.json', '.md')
+        output_path=output_path
     )
     
     # Print summary
@@ -351,8 +428,10 @@ def main():
         print(f"\n{method.upper()}:")
         print(f"  Avg Latency: {result.avg_latency_ms:.2f}ms")
         print(f"  Semantic Similarity: {result.avg_semantic_similarity:.4f}")
-        print(f"  Recall@5: {result.recall_at_5:.4f if result.recall_at_5 else 'N/A'}")
+        recall_5 = f"{result.recall_at_5:.4f}" if result.recall_at_5 is not None else 'N/A'
+        print(f"  Recall@5: {recall_5}")
     print("\n" + "="*80)
+    print(f"\nFull report saved to: {output_path}")
     
     logger.info("=== Benchmark Complete ===")
 

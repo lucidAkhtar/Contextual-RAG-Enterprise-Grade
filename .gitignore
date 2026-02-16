@@ -65,4 +65,4 @@ htmlcov/
 # Temporary
 tmp/
 temp/
-
+*.txt

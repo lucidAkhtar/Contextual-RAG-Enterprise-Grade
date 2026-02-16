@@ -96,6 +96,33 @@ def query_rag_system(
         return {"error": str(e)}
 
 
+def compare_retrieval_methods(
+    question: str,
+    top_k: int = 5,
+    methods: List[str] = None
+) -> Dict[str, Any]:
+    """Compare multiple retrieval methods."""
+    if methods is None:
+        methods = ["contextual", "bm25", "tfidf"]
+    
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/compare",
+            json={
+                "q": question,
+                "k": top_k,
+                "methods": methods
+            },
+            timeout=120
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": f"Error: {response.status_code} - {response.text}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_cache_stats() -> Dict[str, Any]:
     """Get cache statistics."""
     try:
@@ -121,7 +148,7 @@ def get_query_history(limit: int = 50) -> List[Dict[str, Any]]:
 def load_ground_truth() -> List[Dict[str, Any]]:
     """Load ground truth data."""
     try:
-        with open("data/ground_truth_arxiv.json", "r") as f:
+        with open("data/ground_truth.json", "r") as f:
             data = json.load(f)
             # Return qa_pairs array from the new structure
             return data.get("qa_pairs", [])
@@ -159,7 +186,7 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        st.image("https://via.placeholder.com/150x50/667eea/ffffff?text=RAG+System", use_column_width=True)
+        #st.image("https://via.placeholder.com/150x50/667eea/ffffff?text=RAG+System", use_column_width=True)
         st.title("Navigation")
         
         # Check API health
@@ -175,7 +202,7 @@ def main():
         if system_info:
             st.info(f"Documents: {len(system_info.get('document_names', ['Unknown']))}")
             st.info(f"Chunks: {system_info.get('num_chunks', 'N/A')}")
-            st.info(f"Cache: {'✓' if system_info.get('cache_enabled') else '✗'}")
+            st.info(f"Cache: {'Enabled' if system_info.get('cache_enabled') else 'Disabled'}")
         
         # Navigation
         page = st.radio(
@@ -200,6 +227,19 @@ def render_query_page():
     """Render the main query interface."""
     st.markdown('<p class="main-header"> Contextual RAG System</p>', unsafe_allow_html=True)
     st.markdown("Ask questions and get answers from your documents using advanced retrieval methods.")
+    
+    # Tabs for single query vs comparison
+    query_tab, compare_tab = st.tabs([" Single Query", " Compare Methods"])
+    
+    with query_tab:
+        render_single_query()
+    
+    with compare_tab:
+        render_comparison_query()
+
+
+def render_single_query():
+    """Render single query interface."""
     
     # Query input
     col1, col2, col3 = st.columns([3, 1, 1])
@@ -350,6 +390,162 @@ def render_query_page():
                             st.dataframe(score_df, use_container_width=True)
         else:
             st.info("No sources retrieved")
+
+
+def render_comparison_query():
+    """Render retrieval method comparison interface."""
+    st.markdown("### Compare Retrieval Methods Side-by-Side")
+    st.markdown("See how different retrieval strategies (Contextual, BM25, TF-IDF) perform on the same query.")
+    
+    # Query input
+    question = st.text_area(
+        "Enter your question:",
+        height=100,
+        placeholder="What is the Transformer architecture?",
+        key="compare_query"
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        methods = st.multiselect(
+            "Select methods to compare",
+            ["contextual", "bm25", "tfidf"],
+            default=["contextual", "bm25", "tfidf"],
+            help="Choose which retrieval methods to compare"
+        )
+    with col2:
+        top_k = st.slider(
+            "Top K Results",
+            min_value=1,
+            max_value=10,
+            value=5,
+            key="compare_k"
+        )
+    
+    if st.button("⚖️ Compare Methods", type="primary", use_container_width=True):
+        if not question.strip():
+            st.warning("Please enter a question!")
+            return
+        
+        if len(methods) < 2:
+            st.warning("Please select at least 2 methods to compare!")
+            return
+        
+        with st.spinner("Running comparison across all methods..."):
+            result = compare_retrieval_methods(question, top_k, methods)
+        
+        if "error" in result:
+            st.error(f"Error: {result['error']}")
+            return
+        
+        # Display summary
+        st.markdown("---")
+        st.subheader("Comparison Summary")
+        
+        summary = result.get('summary', {})
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Methods Compared", summary.get('num_methods_compared', 0))
+        with col2:
+            st.metric("Fastest Method", summary.get('fastest_method', 'N/A').upper())
+        with col3:
+            st.metric("Highest Confidence", summary.get('highest_confidence_method', 'N/A').upper())
+        with col4:
+            st.metric("Recommended", summary.get('recommended_method', 'N/A').upper())
+        
+        # Insights
+        insights = summary.get('insights', [])
+        if insights:
+            st.markdown("### Key Insights")
+            for insight in insights:
+                st.info(insight)
+        
+        # Comparison charts
+        st.markdown("---")
+        st.subheader("Performance Comparison")
+        
+        results_data = result.get('results', [])
+        if results_data:
+            # Create comparison DataFrame
+            comp_df = pd.DataFrame([
+                {
+                    'Method': r['method'].upper(),
+                    'Confidence': r['confidence_score'],
+                    'Latency (ms)': r['latency_ms'],
+                    'Sources': r['num_sources'],
+                    'Top Score': r['top_source_scores'][0] if r['top_source_scores'] else 0
+                }
+                for r in results_data
+            ])
+            
+            # Display charts
+            col1, col2 = st.columns(2)
+            with col1:
+                fig_conf = px.bar(
+                    comp_df, x='Method', y='Confidence',
+                    title='Confidence Score by Method',
+                    color='Method',
+                    text='Confidence'
+                )
+                fig_conf.update_traces(texttemplate='%{text:.2%}', textposition='outside')
+                fig_conf.update_layout(showlegend=False, yaxis_range=[0, 1])
+                st.plotly_chart(fig_conf, use_container_width=True)
+            
+            with col2:
+                fig_lat = px.bar(
+                    comp_df, x='Method', y='Latency (ms)',
+                    title='Latency by Method',
+                    color='Method',
+                    text='Latency (ms)'
+                )
+                fig_lat.update_traces(texttemplate='%{text:.0f}ms', textposition='outside')
+                fig_lat.update_layout(showlegend=False)
+                st.plotly_chart(fig_lat, use_container_width=True)
+            
+            # Show detailed metrics table
+            st.markdown("### Detailed Metrics")
+            st.dataframe(comp_df, use_container_width=True, hide_index=True)
+        
+        # Display results for each method
+        st.markdown("---")
+        st.subheader(" Detailed Results by Method")
+        
+        for idx, method_result in enumerate(results_data, 1):
+            method_name = method_result['method'].upper()
+            confidence = method_result['confidence_score']
+            confidence_level = method_result['confidence_level']
+            
+            # Confidence color
+            conf_colors = {
+                'high': '#27ae60',
+                'medium': '#f39c12',
+                'low': '#e74c3c'
+            }
+            conf_color = conf_colors.get(confidence_level, '#95a5a6')
+            
+            with st.expander(f"**{idx}. {method_name}** - Confidence: {confidence:.1%} ({confidence_level}) | Latency: {method_result['latency_ms']:.0f}ms", expanded=idx==1):
+                # Answer
+                st.markdown(f"""
+                <div style="background-color: {conf_color}20; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid {conf_color};">
+                    <p style="margin: 0; font-weight: bold;">Answer:</p>
+                    <p style="margin: 0.5rem 0 0 0;">{method_result['answer']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Metrics
+                col_m1, col_m2, col_m3 = st.columns(3)
+                with col_m1:
+                    st.metric("Confidence", f"{confidence:.1%}")
+                with col_m2:
+                    st.metric("Latency", f"{method_result['latency_ms']:.0f}ms")
+                with col_m3:
+                    st.metric("Sources", method_result['num_sources'])
+                
+                # Top sources
+                st.markdown("**Top Retrieved Sources:**")
+                for s_idx, source in enumerate(method_result['sources'][:3], 1):
+                    st.markdown(f"{s_idx}. Page {source['page']} (Score: {source['score']:.3f})")
+                    st.markdown(f"   _{source['content'][:150]}..._")
 
 
 def render_analytics_page():
@@ -550,7 +746,7 @@ def render_audit_logs_page():
     
     # Audit log viewer
     st.markdown("---")
-    st.markdown("### 📋 Audit Log Entries")
+    st.markdown("### Audit Log Entries")
     
     # Filters
     col_f1, col_f2 = st.columns([3, 1])
@@ -695,7 +891,7 @@ def render_ground_truth_page():
             mime="application/json"
         )
     else:
-        st.warning("No ground truth data found at data/ground_truth_arxiv.json")
+        st.warning("No ground truth data found at data/ground_truth_.json")
 
 
 def render_system_info_page():
@@ -721,7 +917,7 @@ def render_system_info_page():
             st.subheader("Available Methods")
             methods = system_info.get('retrieval_methods', [])
             for method in methods:
-                st.success(f"✓ {method.upper()}")
+                st.success(f"{method.upper()}")
             
             st.subheader("Documents Loaded")
             docs = system_info.get('document_names', [])

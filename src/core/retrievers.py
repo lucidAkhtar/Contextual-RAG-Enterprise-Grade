@@ -5,6 +5,9 @@ Implements Contextual Retrieval as proposed by Anthropic.
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Tuple
+import hashlib
+import json
+from pathlib import Path
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -51,12 +54,85 @@ class ContextualRetriever(BaseRetriever):
         
         # Generate contextual embeddings if enabled
         if self.use_contextual_enrichment:
-            self._enrich_nodes_with_context()
+            # Check if nodes are already enriched (should be done in query_engine now)
+            already_enriched = any(
+                "contextual_prefix" in node.metadata 
+                for node in self.nodes[:min(5, len(self.nodes))]  # Check first 5 nodes
+            )
+            
+            if already_enriched:
+                logger.info("✓ Nodes already enriched (done before embedding phase)")
+            else:
+                # Fallback: If not enriched yet, do it now (shouldn't happen)
+                logger.warning("Nodes not enriched yet - enriching now (this should happen before embedding!)")
+                logger.info("=" * 60)
+                logger.info("CONTEXTUAL ENRICHMENT PHASE")
+                logger.info("=" * 60)
+                if self._nodes_already_enriched():
+                    logger.info("✓ Found cached contextual enrichment - skipping LLM calls")
+                else:
+                    logger.info(f"Starting contextual enrichment for {len(nodes)} chunks...")
+                    logger.info("This will make 132 LLM calls to Ollama (takes 2-3 minutes)")
+                    self._enrich_nodes_with_context()
+                    logger.info("=" * 60)
+                    logger.info("✓ CONTEXTUAL ENRICHMENT COMPLETE")
+                    logger.info("=" * 60)
         
         logger.info(
             f"Initialized ContextualRetriever with {len(nodes)} nodes, "
             f"contextual_enrichment={use_contextual_enrichment}"
         )
+    
+    def _get_content_hash(self, text: str) -> str:
+        """Generate deterministic hash from chunk content."""
+        return hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]
+    
+    def _nodes_already_enriched(self) -> bool:
+        """
+        Check if nodes already have contextual enrichment cached.
+        Loads from disk cache if available.
+        Uses content hash instead of node_id for deterministic caching.
+        """
+        cache_path = Path("chroma_db/contextual_enrichment_cache.json")
+        
+        if not cache_path.exists():
+            logger.info("No contextual enrichment cache found")
+            return False
+        
+        try:
+            # Load enrichment cache
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                enrichment_cache = json.load(f)
+            
+            # Apply cached enrichments to nodes
+            applied_count = 0
+            for node in self.nodes:
+                # Use content hash as key (deterministic across runs)
+                content_hash = self._get_content_hash(node.get_content())
+                
+                if content_hash in enrichment_cache:
+                    node.metadata["contextual_prefix"] = enrichment_cache[content_hash]["contextual_prefix"]
+                    node.metadata["original_text"] = enrichment_cache[content_hash]["original_text"]
+                    # Restore enriched text
+                    enriched_text = f"{node.metadata['contextual_prefix']}\n\n{node.metadata['original_text']}"
+                    node.text = enriched_text
+                    applied_count += 1
+            
+            if applied_count >= len(self.nodes) * 0.8:  # 80% threshold
+                logger.info(
+                    f"✓ Loaded contextual enrichment from cache "
+                    f"({applied_count}/{len(self.nodes)} nodes)"
+                )
+                return True
+            else:
+                logger.warning(
+                    f"Cache incomplete: only {applied_count}/{len(self.nodes)} nodes found - will re-enrich"
+                )
+                return False
+                
+        except Exception as e:
+            logger.warning(f"Failed to load enrichment cache: {e}")
+            return False
     
     def _enrich_nodes_with_context(self) -> None:
         """
@@ -70,23 +146,32 @@ class ContextualRetriever(BaseRetriever):
         logger.info("Enriching nodes with contextual information...")
         
         llm = LLMFactory.get_llm()
+        total = len(self.nodes)
+        enriched_count = 0
+        failed_count = 0
         
-        for node in self.nodes:
+        for idx, node in enumerate(self.nodes, 1):
             try:
                 # Get document-level context
                 doc_context = node.metadata.get("document_title", "document")
                 page_num = node.metadata.get("page", "unknown")
                 
-                # Create prompt for context generation
-                prompt = f"""Given the following document chunk, provide a brief (1-2 sentences) context describing what this chunk is about and its role in the document.
+                # Create improved prompt for distinctive context generation
+                prompt = f"""You are analyzing a scientific research paper: "{doc_context}" (Page {page_num}).
 
-Document: {doc_context}
-Page: {page_num}
+Extract and list the MOST IMPORTANT technical concepts, methods, and key information from this text chunk. Focus on:
+- Specific model names, architectures, or algorithms mentioned
+- Key metrics, results, or performance numbers
+- Technical terms and domain-specific vocabulary
+- Main findings, contributions, or claims
+- Important equations, formulas, or mathematical concepts
 
-Chunk:
-{node.get_content()[:500]}...
+Provide a concise summary (2-3 sentences max) that captures the UNIQUE aspects of this chunk using precise technical language. Avoid generic phrases like "this chunk discusses" or "this section describes".
 
-Context:"""
+Text chunk:
+{node.get_content()[:600]}
+
+Key technical summary:"""
                 
                 # Generate context using LLM
                 response = llm.complete(prompt)
@@ -99,13 +184,49 @@ Context:"""
                 # Update node text with context
                 enriched_text = f"{contextual_prefix}\n\n{node.get_content()}"
                 node.text = enriched_text
+                enriched_count += 1
+                
+                # Log progress every 10 chunks
+                if idx % 10 == 0 or idx == total:
+                    logger.info(f"Progress: {idx}/{total} chunks enriched ({idx/total*100:.1f}%)")
                 
             except Exception as e:
                 logger.warning(f"Error enriching node {node.node_id}: {e}")
+                failed_count += 1
                 # Keep original text if enrichment fails
                 continue
         
-        logger.info("Node enrichment completed")
+        # Save enrichment cache to disk
+        self._save_enrichment_cache()
+        
+        logger.info(f"Node enrichment completed: {enriched_count} succeeded, {failed_count} failed")
+        logger.info("All LLM calls finished - Ollama is now idle")
+    
+    def _save_enrichment_cache(self) -> None:
+        """Save contextual enrichment to disk cache for reuse.
+        Uses content hash as key for deterministic caching across runs.
+        """
+        cache_path = Path("chroma_db/contextual_enrichment_cache.json")
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            enrichment_cache = {}
+            for node in self.nodes:
+                if "contextual_prefix" in node.metadata:
+                    # Use content hash as key (deterministic across runs)
+                    content_hash = self._get_content_hash(node.metadata.get("original_text", node.get_content()))
+                    enrichment_cache[content_hash] = {
+                        "contextual_prefix": node.metadata["contextual_prefix"],
+                        "original_text": node.metadata.get("original_text", "")
+                    }
+            
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                json.dump(enrichment_cache, f, indent=2)
+            
+            logger.info(f"✓ Saved contextual enrichment cache ({len(enrichment_cache)} nodes)")
+            
+        except Exception as e:
+            logger.warning(f"Failed to save enrichment cache: {e}")
     
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """

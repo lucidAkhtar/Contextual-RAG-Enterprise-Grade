@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     # Paths
     ground_truth_path: str = "data/ground_truth.json"
     benchmark_results_path: str = "benchmarks/results.json"
-    pdf_path: str = "data/research_paper.pdf"  # Single PDF (deprecated)
-    pdf_paths: str = "data/research_paper.pdf,data/financial_report.pdf,data/employee_handbook.pdf"  # Comma-separated PDF paths
+    pdf_path: str = "data/attention_is_all_you_need.pdf"  # Single PDF (deprecated)
+    pdf_paths: str = "data/attention_is_all_you_need.pdf,data/bert_paper.pdf,data/rag_paper.pdf"  # Comma-separated PDF paths
     
     def get_pdf_paths_list(self) -> list:
         """Get list of PDF paths from comma-separated string."""

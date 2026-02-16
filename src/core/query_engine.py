@@ -32,6 +32,7 @@ logger = setup_logger(__name__)
 class QueryEngine:
     """
     Main query engine orchestrating the RAG pipeline.
+    Uses dependency injection for better testability and flexibility.
     
     Responsibilities:
     - Document ingestion and indexing
@@ -42,33 +43,38 @@ class QueryEngine:
     
     def __init__(
         self,
+        llm: LLM,
+        embed_model: BaseEmbedding,
+        doc_processor: Optional['DocumentProcessor'] = None,
+        settings: Optional[Any] = None,
+        metrics_collector: Optional['MetricsCollector'] = None,
         pdf_path: Optional[str] = None,
         pdf_paths: Optional[List[str]] = None,
-        embed_model: Optional[BaseEmbedding] = None,
-        llm: Optional[LLM] = None,
         chunking_strategy: str = "fixed_size",
         enable_contextual_retrieval: bool = True
     ):
         """
-        Initialize query engine.
+        Initialize query engine with dependency injection.
         
         Args:
+            llm: LLM instance (injected dependency)
+            embed_model: Embedding model instance (injected dependency)
+            doc_processor: Document processor instance (optional, created if None)
+            settings: Settings instance (optional, fetched if None)
+            metrics_collector: Metrics collector instance (optional, created if None)
             pdf_path: Path to single PDF document (deprecated, use pdf_paths)
             pdf_paths: List of paths to PDF documents (for multi-document RAG)
-            embed_model: Embedding model instance
-            llm: LLM instance
             chunking_strategy: Chunking strategy name
             enable_contextual_retrieval: Enable Anthropic's contextual retrieval
         """
-        self.settings = get_settings()
-        self.metrics = MetricsCollector()
+        # Injected dependencies
+        self.llm = llm
+        self.embed_model = embed_model
+        self.settings = settings or get_settings()
+        self.metrics = metrics_collector or MetricsCollector()
+        self.doc_processor = doc_processor or DocumentProcessor()
         
-        # Initialize models
-        self.embed_model = embed_model or self._init_embedding_model()
-        self.llm = llm or LLMFactory.get_llm()
-        
-        # Initialize components
-        self.doc_processor = DocumentProcessor()
+        # Configuration
         self.chunking_strategy_name = chunking_strategy
         self.enable_contextual_retrieval = enable_contextual_retrieval
         
@@ -88,7 +94,53 @@ class QueryEngine:
             # Backward compatibility
             self.ingest_document(pdf_path)
         
-        logger.info("QueryEngine initialized successfully")
+        logger.info("QueryEngine initialized successfully with DI")
+    
+    @classmethod
+    def create(
+        cls,
+        pdf_path: Optional[str] = None,
+        pdf_paths: Optional[List[str]] = None,
+        embed_model: Optional[BaseEmbedding] = None,
+        llm: Optional[LLM] = None,
+        chunking_strategy: str = "fixed_size",
+        enable_contextual_retrieval: bool = True
+    ) -> 'QueryEngine':
+        """
+        Factory method for backward compatibility. Creates QueryEngine with default dependencies.
+        
+        Args:
+            pdf_path: Path to single PDF document
+            pdf_paths: List of paths to PDF documents
+            embed_model: Embedding model instance (created if None)
+            llm: LLM instance (created if None)
+            chunking_strategy: Chunking strategy name
+            enable_contextual_retrieval: Enable Anthropic's contextual retrieval
+            
+        Returns:
+            QueryEngine instance with auto-created dependencies
+        """
+        # Create default dependencies
+        if embed_model is None:
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+            settings = get_settings()
+            embed_model = HuggingFaceEmbedding(
+                model_name=settings.embedding_model,
+                trust_remote_code=True
+            )
+        
+        if llm is None:
+            llm = LLMFactory.get_llm()
+        
+        # Use constructor with DI
+        return cls(
+            llm=llm,
+            embed_model=embed_model,
+            pdf_path=pdf_path,
+            pdf_paths=pdf_paths,
+            chunking_strategy=chunking_strategy,
+            enable_contextual_retrieval=enable_contextual_retrieval
+        )
     
     def _init_embedding_model(self) -> BaseEmbedding:
         """Initialize embedding model."""
@@ -158,7 +210,8 @@ class QueryEngine:
         all_documents = []
         from pathlib import Path
         
-        # Load all PDFs
+        # Load all PDFs (Step 1/3)
+        logger.info("Step 1/3: Loading and chunking PDF documents...")
         for pdf_path in pdf_paths:
             doc_name = Path(pdf_path).name
             self.document_names.append(doc_name)
@@ -185,19 +238,26 @@ class QueryEngine:
         
         logger.info(f"Created {len(self.nodes)} chunks from {len(all_documents)} pages")
         
-        # Initialize vector store (ChromaDB)
+        # Step 1.5: Enrich nodes with contextual information BEFORE embedding
+        if self.enable_contextual_retrieval:
+            self._enrich_nodes_before_embedding()
+        
+        # Initialize vector store (ChromaDB) - will embed enriched text
         self._init_vector_store()
         
         # Initialize retrievers
+        logger.info("Step 3/3: Initializing retrievers (BM25, TF-IDF, Contextual, Hybrid)...")
         self._init_retrievers()
         
         elapsed = (time.perf_counter() - start_time) * 1000
-        logger.info(f"Multi-document ingestion completed in {elapsed:.2f}ms")
+        logger.info("=" * 60)
+        logger.info(f" Multi-document ingestion completed in {elapsed:.2f}ms")
+        logger.info("=" * 60)
         self.metrics.record("ingestion_latency", elapsed)
     
     def _init_vector_store(self) -> None:
         """Initialize ChromaDB vector store and index."""
-        logger.info("Initializing vector store...")
+        logger.info("Step 2/3: Initializing vector store (embeddings)...")
         
         # Initialize ChromaDB client
         chroma_client = chromadb.PersistentClient(
@@ -216,15 +276,142 @@ class QueryEngine:
         # Create storage context
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
         
-        # Create index
-        self.vector_store_index = VectorStoreIndex(
-            nodes=self.nodes,
-            storage_context=storage_context,
-            embed_model=self.embed_model,
-            show_progress=True
-        )
+        # Check if embeddings already exist
+        existing_count = collection.count()
+        expected_count = len(self.nodes)
+        
+        if existing_count > 0 and existing_count == expected_count:
+            # Load existing index (no re-embedding!)
+            logger.info(f"Found existing embeddings ({existing_count} vectors) - loading from disk")
+            self.vector_store_index = VectorStoreIndex.from_vector_store(
+                vector_store=vector_store,
+                embed_model=self.embed_model
+            )
+            logger.info(f"Embeddings loaded successfully (no GPU usage)")
+        else:
+            # Create new index (embeddings will be computed)
+            if existing_count > 0:
+                logger.info(f"Existing count ({existing_count}) != expected ({expected_count}) - re-indexing")
+            else:
+                logger.info(f"No existing embeddings found - indexing {expected_count} chunks")
+            
+            self.vector_store_index = VectorStoreIndex(
+                nodes=self.nodes,
+                storage_context=storage_context,
+                embed_model=self.embed_model,
+                show_progress=True
+            )
+            logger.info(f"Created {expected_count} new embeddings and saved to {self.settings.chroma_persist_dir}")
         
         logger.info("Vector store initialized")
+    
+    def _enrich_nodes_before_embedding(self) -> None:
+        """Enrich nodes with contextual information before embedding.
+        This ensures embeddings are created from enriched text.
+        """
+        from pathlib import Path
+        import json
+        import hashlib
+        
+        cache_path = Path(self.settings.chroma_persist_dir) / "contextual_enrichment_cache.json"
+        
+        # Try to load from cache first
+        if cache_path.exists():
+            try:
+                logger.info("Checking for cached contextual enrichment...")
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    enrichment_cache = json.load(f)
+                
+                # Apply cached enrichments
+                applied_count = 0
+                for node in self.nodes:
+                    content_hash = hashlib.sha256(node.get_content().encode('utf-8')).hexdigest()[:16]
+                    if content_hash in enrichment_cache:
+                        node.metadata["contextual_prefix"] = enrichment_cache[content_hash]["contextual_prefix"]
+                        node.metadata["original_text"] = enrichment_cache[content_hash]["original_text"]
+                        enriched_text = f"{node.metadata['contextual_prefix']}\n\n{node.metadata['original_text']}"
+                        node.text = enriched_text
+                        applied_count += 1
+                
+                if applied_count >= len(self.nodes) * 0.8:
+                    logger.info(f"✓ Loaded cached contextual enrichment ({applied_count}/{len(self.nodes)} nodes)")
+                    return
+                else:
+                    logger.info(f"Cache incomplete ({applied_count}/{len(self.nodes)}), will re-enrich")
+            except Exception as e:
+                logger.warning(f"Failed to load enrichment cache: {e}")
+        
+        # No cache or incomplete - do fresh enrichment
+        logger.info("=" * 60)
+        logger.info("CONTEXTUAL ENRICHMENT PHASE (Before Embedding)")
+        logger.info("=" * 60)
+        logger.info(f"Enriching {len(self.nodes)} nodes with LLM-generated context...")
+        logger.info("This will make 132 LLM calls to Ollama (takes 2-3 minutes)")
+        
+        from src.core.llm_factory import LLMFactory
+        llm = LLMFactory.get_llm()
+        
+        enriched_count = 0
+        failed_count = 0
+        enrichment_cache = {}
+        
+        for idx, node in enumerate(self.nodes, 1):
+            try:
+                doc_context = node.metadata.get("document_title", "document")
+                page_num = node.metadata.get("page", "unknown")
+                
+                # Improved prompt for distinctive, keyword-rich context
+                prompt = f"""You are analyzing a scientific research paper: "{doc_context}" (Page {page_num}).
+
+Extract and list the MOST IMPORTANT technical concepts, methods, and key information from this text chunk. Focus on:
+- Specific model names, architectures, or algorithms mentioned
+- Key metrics, results, or performance numbers
+- Technical terms and domain-specific vocabulary
+- Main findings, contributions, or claims
+- Important equations, formulas, or mathematical concepts
+
+Provide a concise summary (2-3 sentences max) that captures the UNIQUE aspects of this chunk using precise technical language. Avoid generic phrases like "this chunk discusses" or "this section describes".
+
+Text chunk:
+{node.get_content()[:600]}
+
+Key technical summary:"""
+                
+                response = llm.complete(prompt)
+                contextual_prefix = response.text.strip()
+                
+                node.metadata["original_text"] = node.get_content()
+                node.metadata["contextual_prefix"] = contextual_prefix
+                enriched_text = f"{contextual_prefix}\n\n{node.get_content()}"
+                node.text = enriched_text
+                
+                # Cache it
+                content_hash = hashlib.sha256(node.metadata["original_text"].encode('utf-8')).hexdigest()[:16]
+                enrichment_cache[content_hash] = {
+                    "contextual_prefix": contextual_prefix,
+                    "original_text": node.metadata["original_text"]
+                }
+                
+                enriched_count += 1
+                
+                if idx % 10 == 0 or idx == len(self.nodes):
+                    logger.info(f"Progress: {idx}/{len(self.nodes)} chunks enriched ({idx/len(self.nodes)*100:.1f}%)")
+                    
+            except Exception as e:
+                logger.warning(f"Error enriching node: {e}")
+                failed_count += 1
+                continue
+        
+        # Save cache
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(enrichment_cache, f, indent=2)
+        
+        logger.info(f"Node enrichment completed: {enriched_count} succeeded, {failed_count} failed")
+        logger.info(f"Saved enrichment cache to {cache_path}")
+        logger.info("=" * 60)
+        logger.info("CONTEXTUAL ENRICHMENT COMPLETE")
+        logger.info("=" * 60)
     
     def _init_retrievers(self) -> None:
         """Initialize all retrieval methods."""
