@@ -54,8 +54,6 @@ An **enterprise-grade Retrieval-Augmented Generation (RAG) system** implementing
     └──────────┘    └────────────┘   └──────────┘
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design documentation.
-
 ##  Quick Start
 
 ### Prerequisites
