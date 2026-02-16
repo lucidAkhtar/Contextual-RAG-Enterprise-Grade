@@ -229,10 +229,10 @@ Creates semantically richer vector representations
 
 | Method | Recall@5 | Semantic Similarity | Avg Latency | Winner |
 |--------|----------|---------------------|-------------|--------|
-| **Hybrid** | **30%** | **0.389** ⭐ | 51.3s |  Best overall |
-| TF-IDF | **50%** ⭐ | 0.192 | 61.3s |  Best recall |
+| **Hybrid** | **30%** | **0.389**  | 51.3s |  Best overall |
+| TF-IDF | **50%**  | 0.192 | 61.3s |  Best recall |
 | BM25 | 40% | 0.128 | 62.4s | Good lexical |
-| Contextual | 0% | 0.063 | **13.8s** ⭐ | Fastest |
+| Contextual | 0% | 0.063 | **13.8s**  | Fastest |
 
 **Key Finding**: **Hybrid method** balances quality (0.389 similarity) and retrieval effectiveness (30% recall), making it the **recommended default** for production.
 
@@ -307,19 +307,6 @@ Query result caching (TinyDB):
 - **Memory**: Vector store + LLM memory
 - **CPU**: Embedding computation overhead
 - **Storage**: Document corpus + indices
-
----
-
-##  Deliverables Checklist
-
--  **Multi-strategy retrieval** (Contextual, BM25, TF-IDF, Hybrid)
--  **Dependency injection** pattern implemented
--  **REST API** with OpenAPI documentation
--  **Comprehensive benchmarking** (10 QA pairs, 4 methods)
--  **Confidence scoring** and citation extraction
--  **Audit logging** for compliance
--  **Contextual enrichment** (Anthropic's approach)
--  **Production-ready architecture** (scalable, testable)
 
 ---
 
