@@ -17,8 +17,8 @@ similarity to ground truth answers, and retrieval recall.
 
 | Metric | Value |
 |--------|-------|
-| **Average Latency** | 51283.13 ms |
-| **P95 Latency** | 67697.86 ms |
+| **Average Latency** | 51.283 seconds |
+| **P95 Latency** | 67.697 seconds |
 | **Avg Semantic Similarity** | 0.3890 |
 | **Recall@1** | 0.0000 |
 | **Recall@3** | 0.2000 |
@@ -29,8 +29,8 @@ similarity to ground truth answers, and retrieval recall.
 
 | Metric | Value |
 |--------|-------|
-| **Average Latency** | 61284.77 ms |
-| **P95 Latency** | 73918.57 ms |
+| **Average Latency** | 61.284 seconds |
+| **P95 Latency** | 73.918 seconds |
 | **Avg Semantic Similarity** | 0.1919 |
 | **Recall@1** | 0.2000 |
 | **Recall@3** | 0.4000 |
@@ -41,8 +41,8 @@ similarity to ground truth answers, and retrieval recall.
 
 | Metric | Value |
 |--------|-------|
-| **Average Latency** | 62391.83 ms |
-| **P95 Latency** | 72891.32 ms |
+| **Average Latency** | 62.391 seconds |
+| **P95 Latency** | 72.891 seconds |
 | **Avg Semantic Similarity** | 0.1281 |
 | **Recall@1** | 0.1000 |
 | **Recall@3** | 0.4000 |
@@ -53,8 +53,8 @@ similarity to ground truth answers, and retrieval recall.
 
 | Metric | Value |
 |--------|-------|
-| **Average Latency** | 13780.45 ms |
-| **P95 Latency** | 31425.63 ms |
+| **Average Latency** | 13.780 seconds |
+| **P95 Latency** | 31.425 seconds |
 | **Avg Semantic Similarity** | 0.0628 |
 | **Recall@1** | 0.0000 |
 | **Recall@3** | 0.0000 |
@@ -63,12 +63,12 @@ similarity to ground truth answers, and retrieval recall.
 
 ## Method Comparison
 
-| Method | Avg Latency (ms) | Semantic Similarity | Recall@5 |
+| Method | Avg Latency (s) | Semantic Similarity | Recall@5 |
 |--------|------------------|---------------------|----------|
-| hybrid | 51283.13 | 0.3890 | 0.3000 |
-| tfidf | 61284.77 | 0.1919 | 0.5000 |
-| bm25 | 62391.83 | 0.1281 | 0.4000 |
-| contextual | 13780.45 | 0.0628 | 0.0000 |
+| hybrid | 51.283 | 0.3890 | 0.3000 |
+| tfidf | 61.284 | 0.1919 | 0.5000 |
+| bm25 | 62.391 | 0.1281 | 0.4000 |
+| contextual | 13.780 | 0.0628 | 0.0000 |
 
 ## Analysis
 
