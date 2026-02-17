@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Ollama LLM service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: contextual-rag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rag-network
+
+  # FastAPI RAG application
+  rag-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contextual-rag-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data:ro
+      - ./chroma_db:/app/chroma_db
+      - ./cache_db:/app/cache_db
+      - ./logs:/app/logs
+      - ./benchmarks:/app/benchmarks
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLM_MODEL=mistral
+      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - VECTOR_STORE_PATH=./chroma_db
+      - LOG_LEVEL=INFO
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - rag-network
+
+  # Optional: Streamlit UI for demo
+  streamlit-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contextual-rag-streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data:ro
+    environment:
+      - RAG_API_URL=http://rag-api:8000
+    command: ["streamlit", "run", "src/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    depends_on:
+      rag-api:
+        condition: service_healthy
+    networks:
+      - rag-network
+
+volumes:
+  ollama_data:
+    driver: local
+
+networks:
+  rag-network:
+    driver: bridge
