@@ -522,19 +522,6 @@ Contributions welcome! Please:
 3. Add tests for new functionality
 4. Submit a pull request
 
-##  Contact
-
-**Author**: Md Marghub Akhtar 
-**Role**: Senior AI & Gen AI Engineer 
-
-
-##  Acknowledgments
-
-- [Anthropic](https://www.anthropic.com/) for the contextual retrieval approach
-- [LlamaIndex](https://www.llamaindex.ai/) for RAG framework
-- [FastAPI](https://fastapi.tiangolo.com/) for the excellent API framework
-- [ChromaDB](https://www.trychroma.com/) for vector storage
-
 ---
 
 **Built with attention to production quality, clean architecture, and enterprise standards** 
