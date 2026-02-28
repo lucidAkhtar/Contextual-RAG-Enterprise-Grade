@@ -249,15 +249,31 @@ Key technical summary:"""
         
         query_result = self.vector_store_index.vector_store.query(query_obj)
         
+        # Debug logging
+        logger.debug(f"Vector store query returned {len(query_result.ids) if query_result.ids else 0} results")
+        
         # Convert to NodeWithScore format
         nodes_with_scores = []
         for node_id, similarity in zip(query_result.ids, query_result.similarities):
-            # Find corresponding node
-            node = next((n for n in self.nodes if n.node_id == node_id), None)
-            if node:
-                nodes_with_scores.append(
-                    NodeWithScore(node=node, score=similarity)
-                )
+            # Try to find node in docstore first (more reliable)
+            try:
+                node = self.vector_store_index.docstore.get_document(node_id)
+                if node:
+                    nodes_with_scores.append(
+                        NodeWithScore(node=node, score=similarity)
+                    )
+                else:
+                    logger.debug(f"Node {node_id} not found in docstore")
+            except Exception as e:
+                logger.debug(f"Error retrieving node {node_id} from docstore: {e}")
+                # Fallback: search in self.nodes
+                node = next((n for n in self.nodes if n.node_id == node_id), None)
+                if node:
+                    nodes_with_scores.append(
+                        NodeWithScore(node=node, score=similarity)
+                    )
+                else:
+                    logger.debug(f"Node {node_id} also not found in self.nodes")
         
         logger.info(
             f"ContextualRetriever retrieved {len(nodes_with_scores)} nodes "

@@ -86,7 +86,7 @@ def query_rag_system(
                 "k": top_k,
                 "retrieval_method": method
             },
-            timeout=60
+            timeout=300
         )
         if response.status_code == 200:
             return response.json()
@@ -113,7 +113,7 @@ def compare_retrieval_methods(
                 "k": top_k,
                 "methods": methods
             },
-            timeout=120
+            timeout=600
         )
         if response.status_code == 200:
             return response.json()

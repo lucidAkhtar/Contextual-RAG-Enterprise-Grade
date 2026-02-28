@@ -280,18 +280,54 @@ class QueryEngine:
         existing_count = collection.count()
         expected_count = len(self.nodes)
         
+        # Check if we need to re-index
+        needs_reindex = False
         if existing_count > 0 and existing_count == expected_count:
+            # Verify that node IDs match
+            try:
+                sample_result = collection.get(limit=1, include=["metadatas"])
+                if sample_result and sample_result['ids']:
+                    first_stored_id = sample_result['ids'][0]
+                    # Check if this ID exists in our current nodes
+                    node_ids = {node.node_id for node in self.nodes}
+                    if first_stored_id not in node_ids:
+                        logger.warning(f"Node ID mismatch detected - stored ID {first_stored_id} not in current nodes")
+                        needs_reindex = True
+            except Exception as e:
+                logger.warning(f"Could not verify node IDs: {e}")
+                needs_reindex = True
+        else:
+            needs_reindex = True
+        
+        if not needs_reindex and existing_count > 0:
             # Load existing index (no re-embedding!)
             logger.info(f"Found existing embeddings ({existing_count} vectors) - loading from disk")
             self.vector_store_index = VectorStoreIndex.from_vector_store(
                 vector_store=vector_store,
                 embed_model=self.embed_model
             )
-            logger.info(f"Embeddings loaded successfully (no GPU usage)")
+            # CRITICAL: Add nodes to the index's docstore so retriever can find them
+            for node in self.nodes:
+                self.vector_store_index.docstore.add_documents([node], store_text=True)
+            logger.info(f"Embeddings loaded successfully with {len(self.nodes)} nodes (no GPU usage)")
         else:
             # Create new index (embeddings will be computed)
             if existing_count > 0:
-                logger.info(f"Existing count ({existing_count}) != expected ({expected_count}) - re-indexing")
+                if needs_reindex:
+                    logger.info(f"Node ID mismatch or count mismatch - clearing and re-indexing")
+                else:
+                    logger.info(f"Existing count ({existing_count}) != expected ({expected_count}) - re-indexing")
+                # Clear the collection
+                try:
+                    chroma_client.delete_collection("contextual_rag")
+                    collection = chroma_client.create_collection(
+                        name="contextual_rag",
+                        metadata={"hnsw:space": "cosine"}
+                    )
+                    vector_store = ChromaVectorStore(chroma_collection=collection)
+                    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+                except Exception as e:
+                    logger.warning(f"Could not clear collection: {e}")
             else:
                 logger.info(f"No existing embeddings found - indexing {expected_count} chunks")
             
